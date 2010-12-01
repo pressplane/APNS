@@ -1,6 +1,6 @@
 h1. APNS
 
-a gem for the Apple Push Notification Service.
+a gem for the Apple Push Notification Service for Rails 3.
 
 h2. Install
 
@@ -35,15 +35,19 @@ After you have your .pem file. Set what host, port, certificate file location on
 
 h2. Example (Single notification):
 
-Then to send a push notification you can either just send a string as the alert or give it a hash for the alert, badge and sound.
+Sending a push notification is sending a payload.
+
+You may create payloads with APNS::Notification.to_payload() or get it from APNS::Notification#to_payload
+The payload is composed of a device-token and a message all mixed and encoded together.
+Payload message can either just be a alert string or a hash that lets you specify the alert, badge, sound and any custom field.
 
 <pre>
   <code>
     device_token = '123abc456def'
 
-    APNS.send_notification(device_token, 'Hello iPhone!' )
+    APNS.send_payload(APNS::Notification.to_payload(device_token, 'Hello iPhone!'))
 
-    APNS.send_notification(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
+    APNS.send_payload(APNS::Notification.to_payload(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default'))
   </code>
 </pre>
 
@@ -59,7 +63,7 @@ You can also send multiple notifications using the same connection to Apple:
 
     n2 = APNS::Notification.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
     
-    APNS.send_notifications([n1, n2])
+    APNS.send_payload([n1.to_payload, n2.to_payload])
   </code>
 </pre>
 
@@ -70,12 +74,11 @@ You can send other application specific information as well.
 
 <pre>
   <code>
-    APNS.send_notification(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default',
-                                         :other => {:sent => 'with apns gem'})
+    APNS.send_payload(APNS::Notification.to_payload(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default', :sent => 'with apns gem'))
   </code>
 </pre>
 
-This will add the other hash to the same level as the aps hash:
+This will add the :sent key to the same level as the "aps" key:
 
 <pre>
   <code>

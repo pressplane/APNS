@@ -1,37 +1,46 @@
 module APNS
+  
   class Notification
-    attr_accessor :device_token, :alert, :badge, :sound, :other
+    attr_accessor :device, :message
     
-    def initialize(device_token, message)
-      self.device_token = device_token
-      if message.is_a?(Hash)
-        self.alert = message[:alert]
-        self.badge = message[:badge]
-        self.sound = message[:sound]
-        self.other = message[:other]
-      elsif message.is_a?(String)
-        self.alert = message
+    # Short-cut to create a payload from a token String and a message (Hash or String)
+    # APNS::Notification.to_payload(a_token, a_message)
+    def self.to_payload(device_token, message_string_or_hash)
+      notification = self.new(device_token, message_string_or_hash)
+      notification.to_payload
+    end
+    
+    def initialize(device_token, message_string_or_hash)
+      self.device = APNS::Device.new(device_token)
+      if message_string_or_hash.is_a?(String)
+        self.message = {:alert => message_string_or_hash}
+      elsif message_string_or_hash.is_a?(Hash)
+        self.message = message_string_or_hash
       else
         raise "Notification needs to have either a hash or string"
       end
     end
         
-    def packaged_notification
-      pt = self.packaged_token
+    def to_payload
       pm = self.packaged_message
-      [0, 0, 32, pt, 0, pm.size, pm].pack("ccca*cca*")
+      [0, 0, 32, self.device.to_payload, 0, pm.size, pm].pack("ccca*cca*")
     end
-  
-    def packaged_token
-      [device_token.gsub(/[\s|<|>]/,'')].pack('H*')
+    
+    def valid?
+      return self.class.valid_payload?(self.to_payload)
     end
-  
+    
+    def self.valid_payload?(payload)
+      return payload.size.to_i <= 256
+    end
+    
     def packaged_message
+      message_hash = message
       aps = {'aps'=> {} }
-      aps['aps']['alert'] = self.alert if self.alert
-      aps['aps']['badge'] = self.badge if self.badge
-      aps['aps']['sound'] = self.sound if self.sound
-      aps.merge!(self.other) if self.other
+      [:alert, :badge, :sound].each do |k|
+        aps['aps'][k] = message_hash.delete(k) if message_hash.has_key?(k)
+      end
+      aps.merge!(message_hash)
       aps.to_json
     end
     
