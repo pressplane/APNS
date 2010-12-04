@@ -2,7 +2,6 @@ require 'rubygems'
 require 'rake/gempackagetask'
 require 'rubygems/specification'
 require 'date'
-# require 'spec/rake/spectask'
 require 'rspec/core/rake_task'
  
 GEM = 'apns'
@@ -33,7 +32,6 @@ task :default => :spec
  
 desc "Run specs"
 RSpec::Core::RakeTask.new do |t|
-  # t.spec_files = FileList['spec/**/*_spec.rb']
   t.pattern = 'spec/**/*_spec.rb'
   t.rspec_opts = %w(-fs --color)
 end
