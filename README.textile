@@ -1,6 +1,11 @@
 h1. APNS
 
-a gem for the Apple Push Notification Service for Rails 3.
+a gem for the Apple Push Notification Service.
+
+The connection to Apple is done as needed and last until it is either closed by the system or is timed out.
+This is the prefered way for communicating with Apple's push servers.
+
+This is tested to work in Rails 3.
 
 h2. Install
 
@@ -35,9 +40,9 @@ After you have your .pem file. Set what host, port, certificate file location on
 
 h2. Example (Single notification):
 
-Sending a push notification is sending a payload.
+Sending a push notification is sending a payload to Apple's servers.
 
-You may create payloads with APNS::Notification.to_payload() or get it from APNS::Notification#to_payload
+You may create payloads with APNS::Payload.new(<device-token>, <message>)
 The payload is composed of a device-token and a message all mixed and encoded together.
 Payload message can either just be a alert string or a hash that lets you specify the alert, badge, sound and any custom field.
 
@@ -45,25 +50,25 @@ Payload message can either just be a alert string or a hash that lets you specif
   <code>
     device_token = '123abc456def'
 
-    APNS.send_payload(APNS::Notification.to_payload(device_token, 'Hello iPhone!'))
+    APNS.send_payloads(APNS::Payload.new(device_token, 'Hello iPhone!'))
 
-    APNS.send_payload(APNS::Notification.to_payload(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default'))
+    APNS.send_payloads(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default'))
   </code>
 </pre>
 
 h2. Example (Multiple notifications):
 
-You can also send multiple notifications using the same connection to Apple:
+You can also send multiple payloads at once
 
 <pre>
   <code>
     device_token = '123abc456def'
 
-    n1 = APNS::Notification.new(device_token, 'Hello iPhone!' )
+    p1 = APNS::Payload.new(device_token, 'Hello iPhone!' )
 
-    n2 = APNS::Notification.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
+    n2 = APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
     
-    APNS.send_payload([n1.to_payload, n2.to_payload])
+    APNS.send_payloads([p1, p2])
   </code>
 </pre>
 
@@ -74,7 +79,7 @@ You can send other application specific information as well.
 
 <pre>
   <code>
-    APNS.send_payload(APNS::Notification.to_payload(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default', :sent => 'with apns gem'))
+    APNS.send_payload(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default', :sent => 'with apns gem'))
   </code>
 </pre>
 
@@ -108,4 +113,14 @@ ApplicationAppDelegate.m
 </pre>
     
 
+h2. Feedback:
 
+You should check the feedback queue of your application on Apple's servers to avoid sending notifications for obsolete devices
+
+<pre>
+	<code>
+		APNS.feedback.each do |time, token|
+			... do stuff with token
+		end
+	</code>
+</pre>

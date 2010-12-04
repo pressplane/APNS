@@ -1,3 +1,3 @@
 require 'apns/core'
 require 'apns/device'
-require 'apns/notification'
+require 'apns/payload'
