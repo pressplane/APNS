@@ -31,6 +31,7 @@ module APNS
   # Example:
   #
   #  single payload
+  # payload = APNS::Payload.new(device_token, 'Hello iPhone!')
   # APNS.send_payloads(payload)
   #
   #  or with multiple payloads
