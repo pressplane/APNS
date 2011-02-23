@@ -6,10 +6,10 @@ require 'rspec/core/rake_task'
  
 GEM = 'apns'
 GEM_NAME = 'apns'
-GEM_VERSION = '0.9.0'
-AUTHORS = ['James Pozdena']
-EMAIL = "jpoz@jpoz.net"
-HOMEPAGE = "http://github.com/jpoz/apns"
+GEM_VERSION = '0.9.9'
+AUTHORS = ['James Pozdena', 'Thierry Passeron']
+EMAIL = "thierry.passeron@gmail.com"
+HOMEPAGE = "http://github.com/Orion98MC/APNS"
 SUMMARY = "Simple Apple push notification service gem"
  
 spec = Gem::Specification.new do |s|
