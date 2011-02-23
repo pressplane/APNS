@@ -27,10 +27,82 @@ describe APNS::Payload do
     p.should be_valid
   end
   
+  it "should strip whitespace from payload string" do
+    p = payload("Hello iPhone  \n")
+    p.should be_valid
+    p.apn_message.should == { :aps => { :alert => 'Hello iPhone' } }
+  end
+
+  it "should allow chaining of setters for badge alert and sound" do
+    p = APNS::Payload.new("a-device-token").badge(2).sound("bipbip.aiff").alert("hello")
+    p.message[:badge].should == 2
+    p.message[:sound].should == "bipbip.aiff"
+    p.message[:alert].should == "hello"
+    p.should be_valid
+  end
+  
+  it "should allow truncation of alert and return a valid payload when alert is too big" do
+    p = payload("A"*300)
+    p.size.should > 256
+    p.should_not be_valid
+    
+    tp = p.payload_with_truncated_alert
+    tp.should be_valid
+    tp.size.should == 256
+  end
+    
+  it "should not change other fields but the alert message when truncating alert" do
+    p = payload({
+      :alert => "A" * 300,
+      :badge => 2,
+      :sound => "sound.aiff",
+      :custom => "my custom data"
+    })
+    p.should_not be_valid
+    p.size.should > 256
+    p.message[:badge].should == 2
+    p.message[:sound].should == "sound.aiff"
+    p.message[:custom].should == "my custom data"
+    
+    pn = p.payload_with_truncated_alert
+    pn.should be_valid
+    pn.size.should == 256
+    pn.message[:badge].should == p.message[:badge]
+    pn.message[:sound].should == p.message[:sound]
+    pn.message[:custom].should == p.message[:custom]
+  end
+  
+  it "should allow truncating a custom field" do
+    p = payload({
+      :alert => "my alert",
+      :badge => 2,
+      :sound => "sound.aiff",
+      :custom => {:message => "A"*300}
+    })
+    p.should_not be_valid
+    p.size.should > 256
+    p.message[:alert].should == "my alert"
+    p.message[:badge].should == 2
+    p.message[:sound].should == "sound.aiff"
+    
+    pn = p.payload_with_truncated_string_at_keypath("custom.message")
+    pn.should be_valid
+    pn.size.should == 256
+    pn.message[:badge].should == p.message[:badge]
+    pn.message[:sound].should == p.message[:sound]
+    pn.message[:alert].should == p.message[:alert]
+  end
+  
+  
   describe '#packaged_message' do
     
     it "should return JSON with payload informations" do
       p = payload({:alert => 'Hello iPhone', :badge => 2, :custom => "custom-string"})
+      p.apn_message.should == { :aps => { :badge => 2, :alert => 'Hello iPhone' }, :custom => "custom-string" }
+    end
+    
+    it "should return JSON with payload informations with whitespace stripped" do
+      p = payload({:alert => " Hello iPhone  \n", :badge => 2, :custom => "  custom-string  \n"})
       p.apn_message.should == { :aps => { :badge => 2, :alert => 'Hello iPhone' }, :custom => "custom-string" }
     end
     

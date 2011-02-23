@@ -66,9 +66,11 @@ You can also send multiple payloads at once
 
     p1 = APNS::Payload.new(device_token, 'Hello iPhone!' )
 
-    n2 = APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
+    p2 = APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
+
+		p3 = APNS::Payload.new(device_token).alert("Hello from APNS").badge(2).sound("bipbip.aiff")
     
-    APNS.send_payloads([p1, p2])
+    APNS.send_payloads([p1, p2, p3])
   </code>
 </pre>
 
@@ -89,6 +91,50 @@ This will add the :sent key to the same level as the "aps" key:
   <code>
     {"aps":{"alert":"Hello iPhone!","badge":1,"sound":"default"},"sent":"with apns gem"}
   </code>
+</pre>
+
+h2. Truncating payload informations
+
+Only valid Payloads will be sent to Apple. A valid payload has a size lesser or equal to 256 bytes.
+You can check whether a payload is valid with the Payload#valid? method.
+In case you know a payload message field is too large and wish to have it truncated you can either use Payload#payload_with_truncated_alert or a more generic Payload#payload_with_truncated_string_at_keypath. These two method will try to truncate the value of the alert field or any custom field at a keypath.
+
+Truncate the alert field:
+
+<pre>
+  <code>
+		p = APNS::Payload.new("a-device-token", "A very long message "*15)
+		=> #<APNS::Payload:0x103192ba8 @device=#<APNS::Device:0x103192298 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message"}>
+		p.valid?
+		=> false
+		p.size
+		=> 331
+		p.payload_with_truncated_alert
+		=> #<APNS::Payload:0x1031d9468 @device=#<APNS::Device:0x1031d91e8 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A..."}>
+		p.payload_with_truncated_alert.size
+		=> 256
+		p.payload_with_truncated_alert.valid?
+		=> true    
+  </code>
+</pre>
+
+Truncate a custom field:
+
+<pre>
+	<code>
+		p = APNS::Payload.new("a-device-token", :alert => "Hello from APNS", :custom => {:foo => "Bar "*80})
+		=> #<APNS::Payload:0x10331cb90 @device=#<APNS::Device:0x103481530 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar "}}>
+		p.valid?
+		=> false
+		p.size
+		=> 387
+		p.payload_with_truncated_string_at_keypath "custom.foo"
+		=> #<APNS::Payload:0x1031cbb88 @device=#<APNS::Device:0x1031cb908 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Ba..."}}>
+		p.payload_with_truncated_string_at_keypath("custom.foo").size
+		=> 256
+		p.payload_with_truncated_string_at_keypath("custom.foo").valid?
+		=> true
+	</code>
 </pre>
 
 
