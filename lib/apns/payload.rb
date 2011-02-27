@@ -67,6 +67,7 @@ module APNS
     
     # Returns a new payload with the alert truncated to fit in the payload size requirement (PAYLOAD_MAX_SIZE)
     # Rem: It's a best effort since the alert may not be the one string responsible for the oversized payload
+    #      also, if your alert is a Hash containing loc-* keys it won't work, in this case you should use the #payload_with_truncated_string_at_keypath
     def payload_with_truncated_alert
       payload_with_truncated_string_at_keypath([:alert])
     end
@@ -78,6 +79,7 @@ module APNS
     # Rem: Truncation only works on String values...
     def payload_with_truncated_string_at_keypath(array_or_dotted_string)
       return self if valid? # You can safely call it on a valid payload 
+      return unless message.at_key_path(array_or_dotted_string).is_a?(String)
       
       # Rem: I'm using Marshall to make a deep copy of the message hash. Of course this would only work with "standard" values like Hash/String/Array
       payload_with_empty_string = APNS::Payload.new(device.token, Marshal.load(Marshal.dump(message)).at_key_path(array_or_dotted_string){|obj, key| obj[key] = ""})

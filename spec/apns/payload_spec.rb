@@ -72,6 +72,20 @@ describe APNS::Payload do
     pn.message[:custom].should == p.message[:custom]
   end
   
+  it "should not change the alert when truncating alert and alert is not a String" do
+    p = payload({
+      :alert => {'foo' => 'bar'*80, 'baz' => 'blah'},
+      :badge => 2,
+      :sound => "sound.aiff",
+      :custom => "my custom data"
+    })
+    p.should_not be_valid
+    
+    pn = p.payload_with_truncated_alert
+    pn.should be_nil
+  end
+  
+  
   it "should allow truncating a custom field" do
     p = payload({
       :alert => "my alert",
