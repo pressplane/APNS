@@ -9,9 +9,13 @@ This is tested to work in Rails 3.
 
 h2. Install
 
+<pre>
+  <code>
 sudo gem install apns
   or
 rails plugin install git://...
+  </code>
+</pre>
 
 h2. Setup:
 
@@ -21,7 +25,7 @@ In Keychain access export your certificate as a p12. Then run the following comm
 
 <pre>
   <code>
-    openssl pkcs12 -in cert.p12 -out cert.pem -nodes -clcerts
+openssl pkcs12 -in cert.p12 -out cert.pem -nodes -clcerts
   </code>
 </pre>
 
@@ -29,14 +33,14 @@ After you have your .pem file. Set what host, port, certificate file location on
 
 <pre>
   <code>
-    APNS.host = 'gateway.push.apple.com' 
-    # gateway.sandbox.push.apple.com is default
+APNS.host = 'gateway.push.apple.com' 
+# gateway.sandbox.push.apple.com is default
 
-    APNS.pem  = '/path/to/pem/file'
-    # this is the file you just created
-    
-    APNS.port = 2195 
-    # this is also the default. Shouldn't ever have to set this, but just in case Apple goes crazy, you can.
+APNS.pem  = '/path/to/pem/file'
+# this is the file you just created
+
+APNS.port = 2195 
+# this is also the default. Shouldn't ever have to set this, but just in case Apple goes crazy, you can.
   </code>
 </pre>
 
@@ -68,11 +72,11 @@ Payload message can either just be a alert string or a hash that lets you specif
 
 <pre>
   <code>
-    device_token = '123abc456def'
+device_token = '123abc456def'
 
-    APNS.send_payloads(APNS::Payload.new(device_token, 'Hello iPhone!'))
+APNS.send_payloads(APNS::Payload.new(device_token, 'Hello iPhone!'))
 
-    APNS.send_payloads(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default'))
+APNS.send_payloads(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default'))
   </code>
 </pre>
 
@@ -82,15 +86,15 @@ You can also send multiple payloads at once
 
 <pre>
   <code>
-    device_token = '123abc456def'
+device_token = '123abc456def'
 
-    p1 = APNS::Payload.new(device_token, 'Hello iPhone!' )
+p1 = APNS::Payload.new(device_token, 'Hello iPhone!' )
 
-    p2 = APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
+p2 = APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
 
-		p3 = APNS::Payload.new(device_token).alert("Hello from APNS").badge(2).sound("bipbip.aiff")
-    
-    APNS.send_payloads([p1, p2, p3])
+p3 = APNS::Payload.new(device_token).alert("Hello from APNS").badge(2).sound("bipbip.aiff")
+
+APNS.send_payloads([p1, p2, p3])
   </code>
 </pre>
 
@@ -101,7 +105,7 @@ You can send other application specific information as well.
 
 <pre>
   <code>
-    APNS.send_payload(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default', :sent => 'with apns gem'))
+APNS.send_payload(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default', :sent => 'with apns gem'))
   </code>
 </pre>
 
@@ -109,7 +113,7 @@ This will add the :sent key to the same level as the "aps" key:
 
 <pre>
   <code>
-    {"aps":{"alert":"Hello iPhone!","badge":1,"sound":"default"},"sent":"with apns gem"}
+{"aps":{"alert":"Hello iPhone!","badge":1,"sound":"default"},"sent":"with apns gem"}
   </code>
 </pre>
 
@@ -123,18 +127,18 @@ Truncate the alert field:
 
 <pre>
   <code>
-		p = APNS::Payload.new("a-device-token", "A very long message "*15)
-		=> #<APNS::Payload:0x103192ba8 @device=#<APNS::Device:0x103192298 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message"}>
-		p.valid?
-		=> false
-		p.size
-		=> 331
-		p.payload_with_truncated_alert
-		=> #<APNS::Payload:0x1031d9468 @device=#<APNS::Device:0x1031d91e8 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A..."}>
-		p.payload_with_truncated_alert.size
-		=> 256
-		p.payload_with_truncated_alert.valid?
-		=> true    
+p = APNS::Payload.new("a-device-token", "A very long message "*15)
+=> #<APNS::Payload:0x103192ba8 @device=#<APNS::Device:0x103192298 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message"}>
+p.valid?
+=> false
+p.size
+=> 331
+p.payload_with_truncated_alert
+=> #<APNS::Payload:0x1031d9468 @device=#<APNS::Device:0x1031d91e8 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A..."}>
+p.payload_with_truncated_alert.size
+=> 256
+p.payload_with_truncated_alert.valid?
+=> true    
   </code>
 </pre>
 
@@ -142,18 +146,18 @@ Truncate a custom field:
 
 <pre>
 	<code>
-		p = APNS::Payload.new("a-device-token", :alert => "Hello from APNS", :custom => {:foo => "Bar "*80})
-		=> #<APNS::Payload:0x10331cb90 @device=#<APNS::Device:0x103481530 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar "}}>
-		p.valid?
-		=> false
-		p.size
-		=> 387
-		p.payload_with_truncated_string_at_keypath "custom.foo"
-		=> #<APNS::Payload:0x1031cbb88 @device=#<APNS::Device:0x1031cb908 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Ba..."}}>
-		p.payload_with_truncated_string_at_keypath("custom.foo").size
-		=> 256
-		p.payload_with_truncated_string_at_keypath("custom.foo").valid?
-		=> true
+p = APNS::Payload.new("a-device-token", :alert => "Hello from APNS", :custom => {:foo => "Bar "*80})
+=> #<APNS::Payload:0x10331cb90 @device=#<APNS::Device:0x103481530 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar "}}>
+p.valid?
+=> false
+p.size
+=> 387
+p.payload_with_truncated_string_at_keypath "custom.foo"
+=> #<APNS::Payload:0x1031cbb88 @device=#<APNS::Device:0x1031cb908 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Ba..."}}>
+p.payload_with_truncated_string_at_keypath("custom.foo").size
+=> 256
+p.payload_with_truncated_string_at_keypath("custom.foo").valid?
+=> true
 	</code>
 </pre>
 
@@ -165,16 +169,15 @@ After you setup push notification for your application with Apple. You need to a
 ApplicationAppDelegate.m
 <pre>
   <code>
-    - (void)applicationDidFinishLaunching:(UIApplication *)application {    
-        // Register with apple that this app will use push notification
-        [[UIApplication sharedApplication] registerForRemoteNotificationTypes:(UIRemoteNotificationTypeAlert | 
-          UIRemoteNotificationTypeSound | UIRemoteNotificationTypeBadge)];	
-    }
+- (void)applicationDidFinishLaunching:(UIApplication *)application {    
+	// Register with apple that this app will use push notification
+	[[UIApplication sharedApplication] registerForRemoteNotificationTypes:(UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeBadge)];	
+}
 
-    - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
-        // Show the device token obtained from apple to the log
-        NSLog(@"deviceToken: %@", deviceToken);
-    }
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+	// Show the device token obtained from apple to the log
+	NSLog(@"deviceToken: %@", deviceToken);
+}
   </code>
 </pre>
     
@@ -185,8 +188,8 @@ You should check the feedback queue of your application on Apple's servers to av
 
 <pre>
 	<code>
-		APNS.feedback.each do |time, token|
-			... do stuff with token
-		end
+APNS.feedback.each do |time, token|
+	... do stuff with token
+end
 	</code>
 </pre>
