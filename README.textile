@@ -10,6 +10,8 @@ This is tested to work in Rails 3.
 h2. Install
 
 sudo gem install apns
+  or
+rails plugin install git://...
 
 h2. Setup:
 
@@ -35,6 +37,24 @@ After you have your .pem file. Set what host, port, certificate file location on
     
     APNS.port = 2195 
     # this is also the default. Shouldn't ever have to set this, but just in case Apple goes crazy, you can.
+  </code>
+</pre>
+
+In a Rails project, you can add an initializer to configure the gem, with for example:
+
+<pre>
+  <code>
+In file ./config/initializers/APNS.rb:
+
+# Initialize the APNS environment
+
+APNS.pem = case Rails.env
+  when 'development'
+    Rails.root.join("config", "development.pem")
+  when 'production'
+    Rails.root.join("config", "production.pem")
+end
+
   </code>
 </pre>
 
