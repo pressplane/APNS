@@ -20,10 +20,28 @@ module APNS
       self
     end
     
+    
+    # Batch payloads
+    # Ex: APNS::Payload.batch(Device.all.collect{|d|d.token}, :alert => "Hello")
+    #   or with a block
+    #     APNS::Payload.batch(Device.all.collect{|d|d.token}, :alert => custom_big_alert) do |payload|
+    #       payload.payload_with_truncated_alert
+    #     end
+    def self.batch(device_tokens, message_string_or_hash = {})
+      raise unless device_tokens.is_a?(Array)
+      payloads = []
+      device_tokens.each do |device|
+        payload = self.new(device, message_string_or_hash)        
+        payload = yield(payload) if block_given?
+        payloads << payload
+      end
+      payloads
+    end
+    
     #
     # Handy chainable setters
     # 
-    # Ex: APNS::Payload.new(token).badge(3).sound("bipbip").alert("Roadrunner!")
+    # Ex: APNS::Payload.new(token).badge(3).sound("bipbip").alert("Roadrunner!").custom(:foo => :bar)
     #
     def badge(number)
       message[:badge] = number
@@ -40,6 +58,13 @@ module APNS
       self
     end
      
+    def custom(hash)
+      return nil unless hash.is_a? Hash
+      return nil if hash.any?{|k,v| APS_KEYS.include?(k.to_sym) || (k.to_sym == APS_ROOT)}
+      message.merge!(hash)
+      self
+    end
+    
     
     # 
     def to_ssl
@@ -51,6 +76,7 @@ module APNS
       self.to_ssl.size
     end
     
+    # Validity checking only checks that the payload size is valid. We do not check the message content.
     def valid?
       self.size <= PAYLOAD_MAX_SIZE
     end

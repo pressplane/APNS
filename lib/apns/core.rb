@@ -27,15 +27,26 @@ module APNS
   @feedback_port = 2196
   
   # openssl pkcs12 -in mycert.p12 -out client-cert.pem -nodes -clcerts
-  @pem = nil # this should be the path of the pem file not the contents
-  @pass = nil
+  @pem = {} # this should be the path of the pem file not the contents
+  @pass = {}
   
   # Persistent connection
-  @@ssl = nil
-  @@sock = nil
+  @@ssl = {}
+  @@sock = {}
     
   class << self
-    attr_accessor :host, :port, :feedback_host, :feedback_port, :pem, :pass
+    attr_accessor :host, :port, :feedback_host, :feedback_port
+    def pem(stream = :_global, new_pem = nil)
+      @pem[stream] = new_pem if new_pem
+      @pem[stream]
+    end
+    def pem=(new_pem); @pem[:_global] = new_pem; end
+    
+    def pass(stream = :_global, new_pass = nil)
+      @pass[stream] = new_pass if new_pass
+      @pass[stream]
+    end
+    def pass=(new_pass); @pass[:_global] = new_pass; end
   end 
   
   # send one or many payloads
@@ -55,9 +66,10 @@ module APNS
   #  or with multiple payloads
   # APNS.send_payloads([payload1, payload2])
   
-  def self.send_payloads(payloads)
-    # accept Array or single payload
-    payloads = payloads.is_a?(Array) ? payloads : [payloads]
+  
+  # Send to a pem stream
+  def self.send_stream(stream, *payloads)    
+    payloads.flatten!
     
     # retain valid payloads only
     payloads.reject!{ |p| !(p.is_a?(APNS::Payload) && p.valid?) }
@@ -67,16 +79,17 @@ module APNS
     # loop through each payloads
     payloads.each do |payload|
       retry_delay = 2
+      
+      # !ToDo! do a better job by using a select to poll the socket for a possible response from apple to inform us about an error in the sent payload
+      #
       begin
-        if @@ssl.nil?
-          @@sock, @@ssl = self.push_connection
-        end
-        @@ssl.write(payload.to_ssl); @@ssl.flush
+        @@sock[stream], @@ssl[stream] = self.push_connection(stream) if @@ssl[stream].nil?
+        @@ssl[stream].write(payload.to_ssl); @@ssl[stream].flush
       rescue PemPathError, PemFileError => e
         raise e
       rescue
-        @@ssl.close; @@sock.close
-        @@ssl = nil; @@sock = nil # cleanup
+        @@ssl[stream].close; @@sock[stream].close
+        @@ssl[stream] = nil; @@sock[stream] = nil # cleanup
         
         retry_delay *= 2
         if retry_delay <= 8
@@ -86,13 +99,21 @@ module APNS
           raise
         end
       end # begin block 
-            
+
     end # each payloads
   end
   
-    
-  def self.feedback
-    sock, ssl = self.feedback_connection
+  def self.send_payloads(*payloads)
+    self.send(payloads)
+  end
+  
+  def self.send(*payloads)
+    self.send_stream(:_global, payloads)
+  end
+  
+
+  def self.feedback(stream = :_global)
+    sock, ssl = self.feedback_connection(stream)
     
     apns_feedback = []
     
@@ -111,18 +132,18 @@ module APNS
   
   protected
   
-  def self.ssl_context
-    raise PemPathError, "The path to your pem file is not set. (APNS.pem = /path/to/cert.pem)" unless self.pem
-    raise PemFileError, "The path to your pem file does not exist!" unless File.exist?(self.pem)
+  def self.ssl_context(stream = :_global)
+    raise PemPathError, "The path to your pem file is not set. (APNS.pem = /path/to/cert.pem)" unless self.pem(stream)
+    raise PemFileError, "The path to your pem file does not exist!" unless File.exist?(self.pem(stream))
     
     context      = OpenSSL::SSL::SSLContext.new
-    context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem))
-    context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem), self.pass)
+    context.cert = OpenSSL::X509::Certificate.new(File.read(self.pem(stream)))
+    context.key  = OpenSSL::PKey::RSA.new(File.read(self.pem(stream)), self.pass(stream))
     context
   end
   
-  def self.connect_to(aps_host, aps_port)
-    context      = self.ssl_context
+  def self.connect_to(aps_host, aps_port, stream = :_global)
+    context      = self.ssl_context(stream)
     sock         = TCPSocket.new(aps_host, aps_port)
     ssl          = OpenSSL::SSL::SSLSocket.new(sock, context)
     ssl.connect
@@ -130,12 +151,12 @@ module APNS
     return sock, ssl
   end
     
-  def self.push_connection
-    self.connect_to(self.host, self.port)
+  def self.push_connection(stream = :_global)
+    self.connect_to(self.host, self.port, stream)
   end
   
-  def self.feedback_connection
-    self.connect_to(self.feedback_host, self.feedback_port)
+  def self.feedback_connection(stream = :_global)
+    self.connect_to(self.feedback_host, self.feedback_port, stream)
   end
   
 end

@@ -1,11 +1,11 @@
 h1. APNS
 
-a gem for the Apple Push Notification Service.
+A plugin/Gem for the Apple Push Notification Service.
 
-The connection to Apple is done as needed and last until it is either closed by the system or is timed out.
+The connections to Apple are done on demand (per process) and last until they are either closed by the system or are timed out.
 This is the prefered way for communicating with Apple's push servers.
 
-This is tested to work in Rails 3.
+Works in Ruby on Rails 3.
 
 h2. Install
 
@@ -19,9 +19,9 @@ rails plugin install git://...
 
 h2. Setup:
 
-Convert your certificate
+Convert your certificates
 
-In Keychain access export your certificate as a p12. Then run the following command to convert it to a .pem
+In Keychain access export your push certificate(s) as a .p12. Then run the following command to convert each .p12 to a .pem
 
 <pre>
   <code>
@@ -29,97 +29,49 @@ openssl pkcs12 -in cert.p12 -out cert.pem -nodes -clcerts
   </code>
 </pre>
 
-After you have your .pem file. Set what host, port, certificate file location on the APNS class:
+After you have your .pem files, copy them to a place where APNS can access them. 
+You will need to register them with APNS before being able to send Notifications
 
-<pre>
-  <code>
-APNS.host = 'gateway.push.apple.com' 
-# gateway.sandbox.push.apple.com is default
-
-APNS.pem  = '/path/to/pem/file'
-# this is the file you just created
-
-APNS.port = 2195 
-# this is also the default. Shouldn't ever have to set this, but just in case Apple goes crazy, you can.
-  </code>
-</pre>
-
-In a Rails project, you can add an initializer to configure the gem, with for example:
+In a Rails project, you can add an initializer to configure the pem(s), with for example:
 
 <pre>
   <code>
 In file ./config/initializers/APNS.rb:
 
 # Initialize the APNS environment
-
-APNS.pem = case Rails.env
-  when 'development'
-    Rails.root.join("config", "development.pem")
-  when 'production'
-    Rails.root.join("config", "production.pem")
-end
+APNS.pem = Rails.root.join("config", Rails.env + ".pem") # => ./config/{development,production}.pem
 
   </code>
 </pre>
 
-h2. Example (Single notification):
+h2. Creating a Payload:
 
-Sending a push notification is sending a payload to Apple's servers.
+Sending a push notification is sending a Payload to Apple's servers.
 
-You may create payloads with APNS::Payload.new(<device-token>, <message>)
-The payload is composed of a device-token and a message all mixed and encoded together.
+You may create payloads with APNS::Payload.new(<device-token> [,<message>])
+A payload is composed of a device-token and a message all mixed and encoded together.
 Payload message can either just be a alert string or a hash that lets you specify the alert, badge, sound and any custom field.
 
 <pre>
   <code>
 device_token = '123abc456def'
-
-APNS.send_payloads(APNS::Payload.new(device_token, 'Hello iPhone!'))
-
-APNS.send_payloads(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default'))
-  </code>
-</pre>
-
-h2. Example (Multiple notifications):
-
-You can also send multiple payloads at once
-
-<pre>
-  <code>
-device_token = '123abc456def'
-
-p1 = APNS::Payload.new(device_token, 'Hello iPhone!' )
-
+p1 = APNS::Payload.new(device_token, 'Hello iPhone!')
 p2 = APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default')
+p3 = APNS::Payload.new(device_token).badge(4).alert("Hello iPhone!").sound('bird.aiff')
 
-p3 = APNS::Payload.new(device_token).alert("Hello from APNS").badge(2).sound("bipbip.aiff")
-
-APNS.send_payloads([p1, p2, p3])
+# with custom data:
+p4 = APNS::Payload.new(device_token, :badge => 2, :my_custom_field => 'blah')
+p5 = APNS::Payload.new(device_token, :badge => 2).custom(:my_custom_field => 'blah')
   </code>
 </pre>
 
-
-h2. Send other info along with aps
-
-You can send other application specific information as well.
-
-<pre>
-  <code>
-APNS.send_payload(APNS::Payload.new(device_token, :alert => 'Hello iPhone!', :badge => 1, :sound => 'default', :sent => 'with apns gem'))
-  </code>
-</pre>
-
-This will add the :sent key to the same level as the "aps" key:
-
-<pre>
-  <code>
-{"aps":{"alert":"Hello iPhone!","badge":1,"sound":"default"},"sent":"with apns gem"}
-  </code>
-</pre>
 
 h2. Truncating payload informations
 
-Only valid Payloads will be sent to Apple. A valid payload has a size lesser or equal to 256 bytes.
+Only valid Payloads will be sent to Apple. From APNS point of view, a valid payload has a size lesser or equal to 256 bytes.
+REM: Apple may find a APNS valid payload invalid because it doesn't contain mandatory fields in the message part. 
+For instance, a message must at least contain a non empty badge or sound or alert.
+
 You can check whether a payload is valid with the Payload#valid? method.
 In case you know a payload message field is too large and wish to have it truncated you can either use Payload#payload_with_truncated_alert or a more generic Payload#payload_with_truncated_string_at_keypath. These two method will try to truncate the value of the alert field or any custom field at a keypath.
 
@@ -128,13 +80,10 @@ Truncate the alert field:
 <pre>
   <code>
 p = APNS::Payload.new("a-device-token", "A very long message "*15)
-=> #<APNS::Payload:0x103192ba8 @device=#<APNS::Device:0x103192298 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message"}>
 p.valid?
 => false
 p.size
 => 331
-p.payload_with_truncated_alert
-=> #<APNS::Payload:0x1031d9468 @device=#<APNS::Device:0x1031d91e8 @token="a-device-token">, @message={:alert=>"A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A very long message A..."}>
 p.payload_with_truncated_alert.size
 => 256
 p.payload_with_truncated_alert.valid?
@@ -147,13 +96,10 @@ Truncate a custom field:
 <pre>
 	<code>
 p = APNS::Payload.new("a-device-token", :alert => "Hello from APNS", :custom => {:foo => "Bar "*80})
-=> #<APNS::Payload:0x10331cb90 @device=#<APNS::Device:0x103481530 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar "}}>
 p.valid?
 => false
 p.size
 => 387
-p.payload_with_truncated_string_at_keypath "custom.foo"
-=> #<APNS::Payload:0x1031cbb88 @device=#<APNS::Device:0x1031cb908 @token="a-device-token">, @message={:alert=>"Hello from APNS", :custom=>{:foo=>"Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Bar Ba..."}}>
 p.payload_with_truncated_string_at_keypath("custom.foo").size
 => 256
 p.payload_with_truncated_string_at_keypath("custom.foo").valid?
@@ -162,34 +108,92 @@ p.payload_with_truncated_string_at_keypath("custom.foo").valid?
 </pre>
 
 
-h2. Getting your iPhone's device token
+h2. Sending Notifications to a single application:
 
-After you setup push notification for your application with Apple. You need to ask Apple for you application specific device token.
+Before sending notifications, you _must_ have setup the pem file(s) so that Apple knows which application you are sending a notification to.
 
-ApplicationAppDelegate.m
 <pre>
   <code>
-- (void)applicationDidFinishLaunching:(UIApplication *)application {    
-	// Register with apple that this app will use push notification
-	[[UIApplication sharedApplication] registerForRemoteNotificationTypes:(UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeBadge)];	
-}
+APNS.pem = "/path/to/my/development.pem"
+  </code>
+</pre>
 
-- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
-	// Show the device token obtained from apple to the log
-	NSLog(@"deviceToken: %@", deviceToken);
-}
+Now we can send some payloads either with:
+
+  * APNS.send_payloads(<payloads>)
+  * APNS.send(<payloads>) # same as APNS.send_payloads
+
+<pre>
+  <code>
+APNS.send(p1, p2, p3)
+  </code>
+</pre>
+
+h2. Sending Notifications to multiple applications:
+
+You may want to handle push notifications for many applications at once. In this case you have to setup multiple pem streams:
+
+<pre>
+  <code>
+@streams = [:voodoo, :child]
+
+@streams.each do |stream|
+	APNS.pem(stream, "/path/to/#{stream}/development.pem"
+end
+  </code>
+</pre>
+
+Now you can send the notifications to any stream with:
+	
+	* APNS.send_stream(<stream>, <payloads>)
+		
+<pre>
+  <code>
+APNS.send_stream(@streams.first, p1, p2, p3)
+APNS.send_stream(@streams.last, p4, p5)
   </code>
 </pre>
     
 
-h2. Feedback:
+h2. Feedback queue:
 
-You should check the feedback queue of your application on Apple's servers to avoid sending notifications for obsolete devices
+You should check the feedback queue of your application on Apple's servers to avoid sending notifications to obsolete devices
+
+For single pem:
 
 <pre>
 	<code>
 APNS.feedback.each do |time, token|
-	... do stuff with token
+	# remove the device registered with this token ?
 end
 	</code>
+</pre>
+
+For multiple pems:
+
+<pre>
+	<code>
+APNS.feedback(@streams.first).each do |time, token|
+	# remove the device registered with this token ?
+end
+	</code>
+</pre>
+
+
+h2. Getting your iPhone's device token
+
+After you setup push notification for your application with Apple. You need to ask Apple for you application specific device token.
+
+In the UIApplicationDelegate
+<pre>
+  <code>
+- (void)applicationDidFinishLaunching:(UIApplication *)application {    
+	[[UIApplication sharedApplication] registerForRemoteNotificationTypes:
+		(UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeBadge)];	
+}
+
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+	// Do something with the device token
+}
+  </code>
 </pre>
